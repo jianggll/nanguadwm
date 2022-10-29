@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-if [[ "$(ls)" == *orig* ]]
+if [[ $(ls) == *orig* ]]
 then
 	rm -f *.orig
 	rm -f *.rej
