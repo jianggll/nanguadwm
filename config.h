@@ -3,19 +3,22 @@
 /* appearance */
 static const unsigned int borderpx = 1;  /* border pixel of windows */
 static const unsigned int snap     = 16; /* snap pixel */
-static const unsigned int gapv     = 16; /* gaps between windows and screen edge in vertical */
+static const unsigned int gapv     = 20; /* gaps between windows and screen edge in vertical */
 static const unsigned int gaph     = 8;  /* gaps between windows and screen edge in horizontal */
-static const unsigned int gapw     = 4;  /* gaps between windows */
+static const unsigned int gapw     = 0;  /* gaps between windows */
 static const int showbar           = 1;  /* 0 means no bar */
 static const int topbar            = 1;  /* 0 means bottom bar */
-static const char *fonts[]         = { "GoMono Nerd Font:size=14", };
-static const char dmenufont[]      = "GoMono Nerd Font:size=14";
+static const char *fonts[]         = {
+	"Noto Sans:size=12",
+	"Noto Sans CJK SC:size=12",
+};
+static const char dmenufont[]      = "Noto Sans:size=12";
 static const char color1[]         = "#ffffff";
-static const char color2[]         = "#000000";
-static const char color3[]         = "#000000";
-static const char color4[]         = "#000000";
-static const char color5[]         = "#ffffff";
-static const char color6[]         = "#ffffff";
+static const char color2[]         = "#111111";
+static const char color3[]         = "#111111";
+static const char color4[]         = "#111111";
+static const char color5[]         = "#00ff00";
+static const char color6[]         = "#00ff00";
 static const char *colors[][3]     = {
 	/*               fg      bg      border */
 	[SchemeNorm] = { color1, color2, color3 },
@@ -23,7 +26,7 @@ static const char *colors[][3]     = {
 };
 
 /* tagging */
-static const char *tags[] = { "main", "web", "code", "4", "5", "6", "7", "8", "9" };
+static const char *tags[] = { "main", "brow", "code", "4", "5", "6", "7", "8", "9" };
 static const Rule rules[] = {
 	/* xprop(1):
 	 *	WM_CLASS(STRING) = instance, class
@@ -59,7 +62,7 @@ static const Layout layouts[] = {
 #define SHCMD(cmd) { .v = (const char*[]){ "/bin/sh", "-c", cmd, NULL } }
 /* commands */
 static const char *dmenucmd[] = { "dmenu_run", "-fn", dmenufont, "-nb", color2, "-nf", color1, "-sb", color5, "-sf", color4, NULL };
-static const char *termcmd[]  = { "kitty", NULL };
+static const char *termcmd[]  = { "st", NULL };
 static const Key keys[] = {
 	/* modifier         key        function        argument */
 	{ 0, XF86XK_MonBrightnessDown, spawn, SHCMD("light -U 1") },
@@ -68,7 +71,6 @@ static const Key keys[] = {
 	{ 0, XF86XK_AudioRaiseVolume,  spawn, SHCMD("amixer set Master 5%+") },
 	{ MODKEY|ShiftMask, XK_l,      spawn, SHCMD("slock") },
 	{ 0,                XK_Print,  spawn, SHCMD("scrot") },
-	// { MODKEY|ShiftMask, XK_p,      spawn, SHCMD("xfce4-appfinder") },
 	{ MODKEY,           XK_p,      spawn,          {.v = dmenucmd } },
 	{ MODKEY,           XK_Return, spawn,          {.v = termcmd } },
 	{ MODKEY,           XK_g,      tog_gaps,       {0} },
