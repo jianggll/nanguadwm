@@ -39,7 +39,7 @@ LDFLAGS  = ${LIBS}
 #LDFLAGS = ${LIBS}
 
 # compiler and linker
-CC = clang
+CC = gcc
 
 SRC = drw.c dwm.c util.c
 OBJ = ${SRC:.c=.o}

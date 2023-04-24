@@ -2,19 +2,19 @@
 
 /* appearance */
 static const unsigned int borderpx  = 1;        /* border pixel of windows */
-static const unsigned int snap      = 16;       /* snap pixel */
+static const unsigned int snap      = 20;       /* snap pixel */
 static const int showbar            = 1;        /* 0 means no bar */
 static const int topbar             = 1;        /* 0 means bottom bar */
 static const char *fonts[]          = {
-	"Noto Sans:size=12",
-	"Noto Sans CJK SC:size=12",
+	"JetBrainsMono Nerd Font:size=12",
+	"WenQuanYi Micro Hei:size=12",
 };
-static const char dmenufont[]       = "Noto Sans:size=12";
-static const char col_gray1[]       = "#111111";
-static const char col_gray2[]       = "#111111";
+static const char dmenufont[]       = "JetBrainsMono Nerd Font:size=12";
+static const char col_gray1[]       = "#222222";
+static const char col_gray2[]       = "#222222";
 static const char col_gray3[]       = "#ffffff";
-static const char col_gray4[]       = "#111111";
-static const char col_cyan[]        = "#00ff00";
+static const char col_gray4[]       = "#222222";
+static const char col_cyan[]        = "#ffffff";
 static const char *colors[][3]      = {
 	/*               fg         bg         border   */
 	[SchemeNorm] = { col_gray3, col_gray1, col_gray2 },
@@ -22,7 +22,7 @@ static const char *colors[][3]      = {
 };
 
 /* tagging */
-static const char *tags[] = { "main", "brow", "code", "4", "5", "6", "7", "8", "9" };
+static const char *tags[] = { " term", " www", " code", "4", "5", "6", "7", "8", "9" };
 
 static const Rule rules[] = {
 	/* xprop(1):
@@ -66,10 +66,10 @@ static const char *termcmd[]  = { "st", NULL };
 
 static const Key keys[] = {
 	/* modifier                     key        function        argument */
-	{ 0,             XF86XK_MonBrightnessDown, spawn,          SHCMD("light -U 1") },
-	{ 0,             XF86XK_MonBrightnessUp,   spawn,          SHCMD("light -A 1") },
-	{ 0,             XF86XK_AudioLowerVolume,  spawn,          SHCMD("amixer set Master 5%-") },
-	{ 0,             XF86XK_AudioRaiseVolume,  spawn,          SHCMD("amixer set Master 5%+") },
+	{ 0,             XF86XK_MonBrightnessDown, spawn,          SHCMD("light -U 1 && flash_status") },
+	{ 0,             XF86XK_MonBrightnessUp,   spawn,          SHCMD("light -A 1 && flash_status") },
+	{ 0,             XF86XK_AudioLowerVolume,  spawn,          SHCMD("amixer set Master 5%- && flash_status") },
+	{ 0,             XF86XK_AudioRaiseVolume,  spawn,          SHCMD("amixer set Master 5%+ && flash_status") },
 	{ 0,                            XK_Print,  spawn,          SHCMD("scrot") },
 	{ MODKEY|ShiftMask,             XK_l,      spawn,          SHCMD("slock") },
 	{ MODKEY,                       XK_p,      spawn,          {.v = dmenucmd } },
