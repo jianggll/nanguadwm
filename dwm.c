@@ -37,6 +37,9 @@
 #include <X11/Xlib.h>
 #include <X11/Xproto.h>
 #include <X11/Xutil.h>
+#ifdef XINERAMA
+#include <X11/extensions/Xinerama.h>
+#endif /* XINERAMA */
 #include <X11/Xft/Xft.h>
 
 #include "drw.h"
@@ -144,7 +147,7 @@ typedef struct {
 typedef struct {
 	unsigned int gapv;
 	unsigned int gaph;
-	unsigned int gapw;
+	int ifshow;
 } Gaps;
 
 /* function declarations */
@@ -217,6 +220,7 @@ static void tag(const Arg *arg);
 static void tagmon(const Arg *arg);
 static void tile(Monitor *m);
 static void togglebar(const Arg *arg);
+static void togglegaps(const Arg *arg);
 static void togglefloating(const Arg *arg);
 static void toggletag(const Arg *arg);
 static void toggleview(const Arg *arg);
@@ -240,7 +244,6 @@ static int xerror(Display *dpy, XErrorEvent *ee);
 static int xerrordummy(Display *dpy, XErrorEvent *ee);
 static int xerrorstart(Display *dpy, XErrorEvent *ee);
 static void zoom(const Arg *arg);
-static void tog_gaps(const Arg *arg);
 
 /* variables */
 static const char broken[] = "broken";
@@ -279,19 +282,23 @@ static Window root, wmcheckwin;
 /* configuration, allows nested code to access above variables */
 #include "config.h"
 
-static Gaps gaps = { gapv, gaph, gapw };
-
 struct Pertag {
-	unsigned int curtag, prevtag; /* current and previous tag */
-	int nmasters[LENGTH(tags) + 1]; /* number of windows in master area */
-	float mfacts[LENGTH(tags) + 1]; /* mfacts per tag */
-	unsigned int sellts[LENGTH(tags) + 1]; /* selected layouts */
-	const Layout *ltidxs[LENGTH(tags) + 1][2]; /* matrix of tags and layouts indexes  */
-	int showbars[LENGTH(tags) + 1]; /* display bar for the current tag */
+	unsigned int curtag, prevtag; // current and previous tag
+	int nmasters[LENGTH(tags) + 1]; // number of windows in master area
+	float mfacts[LENGTH(tags) + 1]; // mfacts per tag
+	unsigned int sellts[LENGTH(tags) + 1]; // selected layouts
+	const Layout *ltidxs[LENGTH(tags) + 1][2]; // matrix of tags and layouts indexes
+	int showbars[LENGTH(tags) + 1]; // display bar for the current tag
 };
 
 /* compile-time check if all tags fit into an unsigned int bit array. */
 struct NumTags { char limitexceeded[LENGTH(tags) > 31 ? -1 : 1]; };
+
+static Gaps gaps = {
+	gapv,
+	gaph,
+	showgaps,
+};
 
 /* function implementations */
 void
@@ -1689,7 +1696,6 @@ tag(const Arg *arg)
 		focus(NULL);
 		arrange(selmon);
 	}
-	//view(arg);
 }
 
 void
@@ -1703,7 +1709,9 @@ tagmon(const Arg *arg)
 void
 tile(Monitor *m)
 {
-	unsigned int i, n, h, mw, my, ty;
+	unsigned int x, y, w, h;
+	unsigned int i, n;
+	unsigned int mw, my, ty;
 	Client *c;
 
 	for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++);
@@ -1711,22 +1719,26 @@ tile(Monitor *m)
 		return;
 
 	if (n > m->nmaster)
-		mw = m->nmaster ? (m->ww * m->mfact - gaps.gapw/2) : 0;
+		mw = m->nmaster ? (m->ww - 2*gaps.gapv*gaps.ifshow) * m->mfact : 0;
 	else
-		mw = m->ww - gaps.gapv;
+		mw = (m->ww - 2*gaps.gapv*gaps.ifshow);
 	for (i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++)
 		if (i < m->nmaster) {
-			int tmp = MIN(n, m->nmaster) - i;
-			h = (m->wh - 2*gaps.gaph - my - tmp*gaps.gapw + gaps.gapw) / tmp;
-			resize(c, m->wx + gaps.gapv, m->wy + my + gaps.gaph, mw - gaps.gapv - (2*c->bw), h - (2*c->bw), 0);
-			if (my + HEIGHT(c) < m->wh)
-				my += HEIGHT(c) + gaps.gapw;
+			x = m->wx + gaps.gapv*gaps.ifshow;
+			y = m->wy + gaps.gaph*gaps.ifshow + my;
+			w = mw - (2*c->bw);
+			h = (m->wh - 2*gaps.gaph*gaps.ifshow - my) / (MIN(n, m->nmaster) - i) - (2*c->bw);
+			resize(c, x, y, w, h, 0);
+			if (my + HEIGHT(c) < m->wh - 2*gaps.gaph*gaps.ifshow)
+				my += HEIGHT(c);
 		} else {
-			int tmp = n - i;
-			h = (m->wh - 2*gaps.gaph - ty - tmp*gaps.gapw + gaps.gapw) / tmp;
-			resize(c, m->wx + mw + gaps.gapw, m->wy + gaps.gaph + ty, m->ww - mw - gaps.gapv - gaps.gapw - (2*c->bw), h - (2*c->bw), 0);
-			if (ty + HEIGHT(c) < m->wh)
-				ty += HEIGHT(c) + gaps.gapw;
+			x = m->wx + gaps.gapv*gaps.ifshow + mw;
+			y = m->wy + gaps.gaph*gaps.ifshow + ty;
+			w = m->ww - 2*gaps.gapv*gaps.ifshow - mw - (2*c->bw);
+			h = (m->wh - 2*gaps.gaph*gaps.ifshow - ty) / (n - i) - (2*c->bw);
+			resize(c, x, y, w, h, 0);
+			if (ty + HEIGHT(c) < m->wh - 2*gaps.gaph*gaps.ifshow)
+				ty += HEIGHT(c);
 		}
 }
 
@@ -1737,6 +1749,16 @@ togglebar(const Arg *arg)
 	updatebarpos(selmon);
 	XMoveResizeWindow(dpy, selmon->barwin, selmon->wx, selmon->by, selmon->ww, bh);
 	arrange(selmon);
+}
+
+void
+togglegaps(const Arg *arg)
+{
+	if (gaps.ifshow == 1)
+		gaps.ifshow = 0;
+	else
+		gaps.ifshow = 1;
+	tile(selmon);
 }
 
 void
@@ -1772,7 +1794,7 @@ void
 toggleview(const Arg *arg)
 {
 	unsigned int newtagset = selmon->tagset[selmon->seltags] ^ (arg->ui & TAGMASK);
-	int i;
+	int i = 0;
 
 	if (newtagset) {
 		selmon->tagset[selmon->seltags] = newtagset;
@@ -1782,14 +1804,14 @@ toggleview(const Arg *arg)
 			selmon->pertag->curtag = 0;
 		}
 
-		/* test if the user did not select the same tag */
+		// test if the user did not select the same tag
 		if (!(newtagset & 1 << (selmon->pertag->curtag - 1))) {
 			selmon->pertag->prevtag = selmon->pertag->curtag;
-			for (i = 0; !(newtagset & 1 << i); i++) ;
+			for (int i = 0; !(newtagset & 1 << i); i++) ;
 			selmon->pertag->curtag = i + 1;
 		}
 
-		/* apply settings for this view */
+		// apply settings for this view
 		selmon->nmaster = selmon->pertag->nmasters[selmon->pertag->curtag];
 		selmon->mfact = selmon->pertag->mfacts[selmon->pertag->curtag];
 		selmon->sellt = selmon->pertag->sellts[selmon->pertag->curtag];
@@ -2208,21 +2230,6 @@ zoom(const Arg *arg)
 	pop(c);
 }
 
-void
-tog_gaps(const Arg *arg)
-{
-	if (gaps.gapv != 0) {
-		gaps.gapv = 0;
-		gaps.gaph = 0;
-		gaps.gapw = 0;
-	} else {
-		gaps.gapv = gapv;
-		gaps.gaph = gaph;
-		gaps.gapw = gapw;
-	}
-	tile(selmon);
-}
-
 int
 main(int argc, char *argv[])
 {
@@ -2236,11 +2243,13 @@ main(int argc, char *argv[])
 		die("dwm: cannot open display");
 	checkotherwm();
 	setup();
+#ifdef __OpenBSD__
+	if (pledge("stdio rpath proc exec", NULL) == -1)
+		die("pledge");
+#endif /* __OpenBSD__ */
 	scan();
 	run();
 	cleanup();
 	XCloseDisplay(dpy);
 	return EXIT_SUCCESS;
 }
-
-// vim: ts=4 sts=4 sw=4 noet
