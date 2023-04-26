@@ -144,6 +144,12 @@ typedef struct {
 	int monitor;
 } Rule;
 
+typedef struct {
+	unsigned int gapv;
+	unsigned int gaph;
+	int ifshow;
+} Gaps;
+
 /* function declarations */
 static void applyrules(Client *c);
 static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact);
@@ -214,6 +220,7 @@ static void tag(const Arg *arg);
 static void tagmon(const Arg *arg);
 static void tile(Monitor *m);
 static void togglebar(const Arg *arg);
+static void togglegaps(const Arg *arg);
 static void togglefloating(const Arg *arg);
 static void toggletag(const Arg *arg);
 static void toggleview(const Arg *arg);
@@ -286,6 +293,12 @@ struct Pertag {
 
 /* compile-time check if all tags fit into an unsigned int bit array. */
 struct NumTags { char limitexceeded[LENGTH(tags) > 31 ? -1 : 1]; };
+
+static Gaps gaps = {
+	gapv,
+	gaph,
+	showgaps,
+};
 
 /* function implementations */
 void
@@ -1696,7 +1709,9 @@ tagmon(const Arg *arg)
 void
 tile(Monitor *m)
 {
-	unsigned int i, n, h, mw, my, ty;
+	unsigned int x, y, w, h;
+	unsigned int i, n;
+	unsigned int mw, my, ty;
 	Client *c;
 
 	for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++);
@@ -1704,19 +1719,25 @@ tile(Monitor *m)
 		return;
 
 	if (n > m->nmaster)
-		mw = m->nmaster ? m->ww * m->mfact : 0;
+		mw = m->nmaster ? (m->ww - 2*gaps.gapv*gaps.ifshow) * m->mfact : 0;
 	else
-		mw = m->ww;
+		mw = (m->ww - 2*gaps.gapv*gaps.ifshow);
 	for (i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++)
 		if (i < m->nmaster) {
-			h = (m->wh - my) / (MIN(n, m->nmaster) - i);
-			resize(c, m->wx, m->wy + my, mw - (2*c->bw), h - (2*c->bw), 0);
-			if (my + HEIGHT(c) < m->wh)
+			x = m->wx + gaps.gapv*gaps.ifshow;
+			y = m->wy + gaps.gaph*gaps.ifshow + my;
+			w = mw - (2*c->bw);
+			h = (m->wh - 2*gaps.gaph*gaps.ifshow - my) / (MIN(n, m->nmaster) - i) - (2*c->bw);
+			resize(c, x, y, w, h, 0);
+			if (my + HEIGHT(c) < m->wh - 2*gaps.gaph*gaps.ifshow)
 				my += HEIGHT(c);
 		} else {
-			h = (m->wh - ty) / (n - i);
-			resize(c, m->wx + mw, m->wy + ty, m->ww - mw - (2*c->bw), h - (2*c->bw), 0);
-			if (ty + HEIGHT(c) < m->wh)
+			x = m->wx + gaps.gapv*gaps.ifshow + mw;
+			y = m->wy + gaps.gaph*gaps.ifshow + ty;
+			w = m->ww - 2*gaps.gapv*gaps.ifshow - mw - (2*c->bw);
+			h = (m->wh - 2*gaps.gaph*gaps.ifshow - ty) / (n - i) - (2*c->bw);
+			resize(c, x, y, w, h, 0);
+			if (ty + HEIGHT(c) < m->wh - 2*gaps.gaph*gaps.ifshow)
 				ty += HEIGHT(c);
 		}
 }
@@ -1728,6 +1749,16 @@ togglebar(const Arg *arg)
 	updatebarpos(selmon);
 	XMoveResizeWindow(dpy, selmon->barwin, selmon->wx, selmon->by, selmon->ww, bh);
 	arrange(selmon);
+}
+
+void
+togglegaps(const Arg *arg)
+{
+	if (gaps.ifshow == 1)
+		gaps.ifshow = 0;
+	else
+		gaps.ifshow = 1;
+	tile(selmon);
 }
 
 void
